@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "Jox.SolutionAnalyzer": {
+      "commandName": "Project",
+      "commandLineArgs": "\"C:\\Jopa\\vrb-git\\jopa\\Framework\\PasswordEncryption\\A1100A0010V.sln\""
+    }
+  }
+}
