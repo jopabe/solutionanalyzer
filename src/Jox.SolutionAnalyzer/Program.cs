@@ -1,21 +1,26 @@
-﻿using Microsoft.Build.Construction;
+﻿using Jox.SolutionAnalyzer;
 using System.CommandLine;
 
-var solutionFile = new Argument<FileInfo[]>("solutionFile", "The solution file") { Arity = ArgumentArity.OneOrMore };
+var msBuildPath = new Option<DirectoryInfo>("msBuildPath",
+    () => new DirectoryInfo(@"c:\Program Files\Microsoft Visual Studio\2022\Preview\Msbuild\Current\Bin"),
+    "Location of the MSBuild installation");
+var repositoryRoot = new Argument<DirectoryInfo>("repositoryRoot", "The root dir of the repository"); // { Arity = ArgumentArity.OneOrMore };
 
-var rootCommand = new RootCommand("Analyze a .NET solution for projects and dependencies")
+var rootCommand = new RootCommand("Analyze all .NET solutions in a repo for projects and dependencies")
 {
-    solutionFile
+    msBuildPath,
+    repositoryRoot
 };
 
-rootCommand.SetHandler(async (FileInfo[] slnFiles) =>
+rootCommand.SetHandler(async context =>
 {
-    foreach (FileInfo slnFile in slnFiles)
+    Parser.RegisterMSBuildLocation(context.ParseResult.GetValueForOption(msBuildPath));
+    var rootDir = context.ParseResult.GetValueForArgument(repositoryRoot);
+    var repo = await Parser.CrawlRepository(rootDir, context.GetCancellationToken());
+    foreach (var sol in repo.Solutions)
     {
-        var sln = SolutionFile.Parse(slnFile.FullName);
-        await Printer.PrintSolutionAsync(sln, slnFile.FullName);
+        Printer.PrintSolution(sol);
     }
-}, solutionFile);
-
+});
 
 return rootCommand.Invoke(args);
