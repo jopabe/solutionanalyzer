@@ -3,6 +3,9 @@
 public class MSBuildProject
 {
     public FileInfo ProjectFile { get; init; }
+    public string ProjectFileRelativePath(Repository repo)
+        => Path.GetRelativePath(repo.RootPath.FullName, ProjectFile.FullName);
+
     public string ProjectName { get; init; }
     public string ProjectType => "KnownToBeMSBuildFormat";
     public string TargetFrameworkVersion { get; init; }
