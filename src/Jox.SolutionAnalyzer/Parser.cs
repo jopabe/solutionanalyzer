@@ -43,8 +43,7 @@ public class Parser
             var vswhereInfo = new ProcessStartInfo()
             {
                 FileName = @"C:\Program Files (x86)\Microsoft Visual Studio\Installer\vswhere.exe",
-                Arguments = "-requires Microsoft.Component.MSBuild -property installationPath -latest -prerelease -version '[16.0,'",
-                UseShellExecute = true,
+                Arguments = "-requires Microsoft.Component.MSBuild -property installationPath -latest -prerelease -version [16.0,",
                 RedirectStandardOutput = true
             };
             if (!File.Exists(vswhereInfo.FileName)) return null;
@@ -53,7 +52,7 @@ public class Parser
             if (vswhere == null) return null;
             vswhere.WaitForExit();
             if (vswhere.ExitCode != 0) return null;
-            return vswhere!.StandardOutput.ReadToEnd();
+            return vswhere!.StandardOutput.ReadToEnd().Trim();
         }
         catch (Exception)
         {
@@ -76,60 +75,101 @@ public class Parser
     public static async Task<Solution> ParseSolution(FileInfo slnFile, CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        var msBuildSolution = await Task.Run(() => SolutionFile.Parse(slnFile.FullName), cancellationToken).ConfigureAwait(false);
-        var projects = new List<MSBuildProject>();
-        var otherProjects = new List<NonMsBuildProject>();
-
-        foreach (var projectInSolution in msBuildSolution.ProjectsInOrder)
+        try
         {
-            if (projectInSolution.ProjectType == SolutionProjectType.KnownToBeMSBuildFormat)
+            var msBuildSolution = await Task.Run(() => SolutionFile.Parse(slnFile.FullName), cancellationToken).ConfigureAwait(false);
+            var projects = new List<MSBuildProject>();
+            var otherProjects = new List<NonMsBuildProject>();
+
+            foreach (var projectInSolution in msBuildSolution.ProjectsInOrder)
             {
-                projects.Add(await ParseProject(projectInSolution, cancellationToken).ConfigureAwait(false));
-            }
-            else
-            {
-                otherProjects.Add(new NonMsBuildProject()
+                if (projectInSolution.ProjectType == SolutionProjectType.KnownToBeMSBuildFormat)
                 {
-                    AbsolutePath = projectInSolution.AbsolutePath,
-                    ProjectName = projectInSolution.ProjectName,
-                    ProjectType = projectInSolution.ProjectType.ToString()
-                });
+                    MSBuildProject? project = null;
+                    if (!projectCache.TryGetValue(projectInSolution.AbsolutePath, out project))
+                    {
+                        project = await ParseProject(projectInSolution, cancellationToken).ConfigureAwait(false);
+                        projectCache.Add(projectInSolution.AbsolutePath, project);
+                    }
+                    projects.Add(project);
+                }
+                else
+                {
+                    otherProjects.Add(new NonMsBuildProject()
+                    {
+                        AbsolutePath = projectInSolution.AbsolutePath,
+                        ProjectName = projectInSolution.ProjectName,
+                        ProjectType = projectInSolution.ProjectType.ToString()
+                    });
+                }
             }
+            return new Solution() { SolutionFilePath = slnFile, MSBuildProjects = projects, NonMSBuildProjects = otherProjects };
         }
-        return new Solution() { SolutionFilePath = slnFile, MSBuildProjects = projects, NonMSBuildProjects = otherProjects };
+        catch (Exception ex)
+        {
+            return new Solution() { SolutionFilePath = slnFile, ParseIssue = ex };
+        }
     }
 
     private static async Task<MSBuildProject> ParseProject(ProjectInSolution projectInSolution, CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        var proj = await Task.Run(() => Project.FromFile(projectInSolution.AbsolutePath, new ProjectOptions()), cancellationToken).ConfigureAwait(false);
-        return new MSBuildProject()
+        var projectFile = new FileInfo(projectInSolution.AbsolutePath);
+        try
         {
-            ProjectFile = new FileInfo(proj.FullPath),
-            ProjectName = projectInSolution.ProjectName,
-            TargetFrameworkVersion = proj.GetPropertyValue("TargetFrameworkVersion"),
-            TargetFramework = proj.GetPropertyValue("TargetFramework"),
-            TargetFrameworks = proj.GetPropertyValue("TargetFrameworks"),
-            ProjectReferences = proj.GetItemsIgnoringCondition("ProjectReference")
-                .Select(r => new ProjectReference()
+            if (!projectFile.Exists)
+            {
+                return new MSBuildProject()
                 {
-                    ProjectFile = new FileInfo(Path.Combine(proj.DirectoryPath, r.EvaluatedInclude))
-                }).ToList(),
-            PackageReferences = proj.GetItemsIgnoringCondition("PackageReference")
-                .Select(r => new PackageReference()
-                {
-                    PackageName = r.EvaluatedInclude,
-                    PackageVersion = r.GetMetadataValue("Version")
-                }).Concat(ReadPackagesConfig(proj)).ToList(),
-            AssemblyReferences = proj.GetItemsIgnoringCondition("Reference")
-                .Select(r => new AssemblyReference()
-                {
-                    AssemblyName = r.EvaluatedInclude,
-                    HintPath = r.GetMetadataValue("HintPath")
-                }).ToList()
-        };
+                    ProjectFile = projectFile,
+                    ProjectName = projectInSolution.ProjectName + " (File Not Found)"
+                };
+            }
+            var proj = ProjectCollection.GlobalProjectCollection.LoadedProjects.FirstOrDefault(p => projectFile.FullName.Equals(p.FullPath, StringComparison.OrdinalIgnoreCase));
+            if (proj == null)
+            {
+                Console.Error.WriteLine("status: processing {0}", projectFile.FullName);
+                proj = await Task.Run(() => Project.FromFile(projectFile.FullName, new ProjectOptions()), cancellationToken).ConfigureAwait(false);
+            }
+
+            return new MSBuildProject()
+            {
+                ProjectFile = new FileInfo(proj.FullPath),
+                ProjectName = projectInSolution.ProjectName,
+                TargetFrameworkVersion = proj.GetPropertyValue("TargetFrameworkVersion"),
+                TargetFramework = proj.GetPropertyValue("TargetFramework"),
+                TargetFrameworks = proj.GetPropertyValue("TargetFrameworks"),
+                ProjectReferences = proj.GetItemsIgnoringCondition("ProjectReference")
+                    .Select(r => new ProjectReference()
+                    {
+                        ProjectFile = new FileInfo(Path.Combine(proj.DirectoryPath, r.EvaluatedInclude))
+                    }).ToList(),
+                PackageReferences = proj.GetItemsIgnoringCondition("PackageReference")
+                    .Select(r => new PackageReference()
+                    {
+                        PackageName = r.EvaluatedInclude,
+                        PackageVersion = r.GetMetadataValue("Version")
+                    }).Concat(ReadPackagesConfig(proj)).ToList(),
+                AssemblyReferences = proj.GetItemsIgnoringCondition("Reference")
+                    .Select(r => new AssemblyReference()
+                    {
+                        AssemblyName = r.EvaluatedInclude,
+                        HintPath = r.GetMetadataValue("HintPath")
+                    }).ToList()
+            };
+        }
+        catch (Exception ex)
+        {
+            return new MSBuildProject()
+            {
+                ProjectFile = projectFile,
+                ProjectName = projectInSolution.ProjectName,
+                ParseIssue = ex
+            };
+        }
     }
 
+    private static Dictionary<string, MSBuildProject> projectCache = new();
     private static IEnumerable<PackageReference> ReadPackagesConfig(Project proj)
     {
         var packagesConfig = new FileInfo(Path.Combine(proj.DirectoryPath, "packages.config"));

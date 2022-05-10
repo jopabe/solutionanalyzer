@@ -12,7 +12,8 @@ public class MSBuildProject
     public string TargetFramework { get; init; }
     public string TargetFrameworks { get; init; }
 
-    public IReadOnlyList<ProjectReference> ProjectReferences { get; init; }
-    public IReadOnlyList<PackageReference> PackageReferences { get; init; }
-    public IReadOnlyList<AssemblyReference> AssemblyReferences { get; init; }
+    public IReadOnlyList<ProjectReference> ProjectReferences { get; init; } = Array.Empty<ProjectReference>();
+    public IReadOnlyList<PackageReference> PackageReferences { get; init; } = Array.Empty<PackageReference>();
+    public IReadOnlyList<AssemblyReference> AssemblyReferences { get; init; } = Array.Empty<AssemblyReference>();
+    public Exception ParseIssue { get; init; }
 }

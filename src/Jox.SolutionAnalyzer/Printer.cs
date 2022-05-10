@@ -6,6 +6,10 @@ internal class Printer
 {
     internal static void PrintSolution(Solution sln, Repository repo)
     {
+        if (sln.ParseIssue != null)
+        {
+            WriteCsvLine("sln-corrupt", sln.SolutionFileRelativePath(repo), sln.ParseIssue.Message);
+        }
         foreach (var proj in sln.NonMSBuildProjects)
         {
             WriteCsvLine("sln-proj", sln.SolutionFileRelativePath(repo), proj.RelativePath(repo),
@@ -21,9 +25,17 @@ internal class Printer
     internal static void PrintProject(MSBuildProject proj, string slnPath, Repository repo)
     {
         var projectFileRelativePath = proj.ProjectFileRelativePath(repo);
-        WriteCsvLine("sln-proj", slnPath, projectFileRelativePath,
-            proj.ProjectType, proj.ProjectName, proj.TargetFrameworkVersion,
-            proj.TargetFramework, proj.TargetFrameworks);
+        if (proj.ParseIssue != null)
+        {
+            WriteCsvLine("sln-proj-corrupt", slnPath, projectFileRelativePath,
+                proj.ProjectType, proj.ProjectName, proj.ParseIssue.Message, string.Empty, string.Empty);
+        }
+        else
+        {
+            WriteCsvLine("sln-proj", slnPath, projectFileRelativePath,
+                proj.ProjectType, proj.ProjectName, proj.TargetFrameworkVersion,
+                proj.TargetFramework, proj.TargetFrameworks);
+        }
         foreach (var projectRef in proj.ProjectReferences)
         {
             WriteCsvLine("proj-projdep", projectFileRelativePath, projectRef.ProjectFile.FullName);
