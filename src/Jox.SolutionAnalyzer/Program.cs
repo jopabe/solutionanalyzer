@@ -12,7 +12,7 @@ var rootCommand = new RootCommand("Analyze all .NET solutions in a repo for proj
 
 rootCommand.SetHandler(async context =>
 {
-    Parser.RegisterMSBuildLocation(context.ParseResult.GetValueForOption(msBuildPath));
+    MSBuildIntegration.RegisterMSBuildLocation(context.ParseResult.GetValueForOption(msBuildPath));
     var rootDir = context.ParseResult.GetValueForArgument(repositoryRoot);
     var repo = await Parser.CrawlRepository(rootDir, context.GetCancellationToken());
     foreach (var sol in repo.Solutions)
