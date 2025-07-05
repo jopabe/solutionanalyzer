@@ -25,7 +25,7 @@ public class Parser
     public static async Task<Solution> ParseSolution(FileInfo slnFile, DirectoryInfo repositoryRoot, CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        var relativePath = Path.GetRelativePath(repositoryRoot.FullName, slnFile.FullName);
+        var relativePath = NetFrameworkBackports.GetRelativePath(repositoryRoot.FullName, slnFile.FullName);
         try
         {
             var msBuildSolution = await Task.Run(() => SolutionFile.Parse(slnFile.FullName), cancellationToken).ConfigureAwait(false);
@@ -48,7 +48,7 @@ public class Parser
                 {
                     otherProjects.Add(new NonMsBuildProject()
                     {
-                        RelativePath = Path.GetRelativePath(repositoryRoot.FullName, projectInSolution.AbsolutePath),
+                        RelativePath = NetFrameworkBackports.GetRelativePath(repositoryRoot.FullName, projectInSolution.AbsolutePath),
                         ProjectName = projectInSolution.ProjectName,
                         ProjectType = projectInSolution.ProjectType.ToString()
                     });
@@ -66,7 +66,7 @@ public class Parser
     {
         cancellationToken.ThrowIfCancellationRequested();
         var projectFile = new FileInfo(projectInSolution.AbsolutePath);
-        var relativePath = Path.GetRelativePath(repositoryRoot.FullName, projectFile.FullName);
+        var relativePath = NetFrameworkBackports.GetRelativePath(repositoryRoot.FullName, projectFile.FullName);
         try
         {
             if (!projectFile.Exists)
@@ -108,7 +108,7 @@ public class Parser
                     {
                         var hintPath = r.GetMetadataValue("HintPath");
                         var relativePath = string.IsNullOrWhiteSpace(hintPath) ? "" :
-                            Path.GetRelativePath(repositoryRoot.FullName,
+                            NetFrameworkBackports.GetRelativePath(repositoryRoot.FullName,
                                 Path.Combine(projectFile.Directory!.FullName, hintPath));
                         return new AssemblyReference()
                         {
