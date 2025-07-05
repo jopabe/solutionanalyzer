@@ -26,7 +26,15 @@ internal class MSBuildIntegration
             }
             else
             {
+#if NETFRAMEWORK
+                // specify version from the referenced NuGet package
+                var requireVersion = new Version(17, 12, 0);
+                var latest = MSBuildLocator.QueryVisualStudioInstances().First(
+                    i => i.Version.Major == requireVersion.Major && i.Version.Minor == requireVersion.Minor);
+#else
                 var latest = MSBuildLocator.QueryVisualStudioInstances().MaxBy(i => i.Version);
+
+#endif
                 MSBuildLocator.RegisterInstance(latest);
             }
         }
