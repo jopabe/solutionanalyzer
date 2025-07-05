@@ -1,8 +1,8 @@
 {
   "profiles": {
     "Jox.SolutionAnalyzer": {
-      "commandName": "Project",
-      "commandLineArgs": "\"c:\\Users\\jopa\\source\\repos\\Paj\\Crawlers\""
+        "commandName": "Project",
+        "commandLineArgs": "analyze c:\\Users\\jopa\\source\\repos\\Paj\\Crawlers"
     }
   }
 }

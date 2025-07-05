@@ -5,6 +5,7 @@ public class MSBuildProject
     public required string ProjectFileRelativePath { get; init; }
     public required string ProjectName { get; init; }
     public string ProjectType => "KnownToBeMSBuildFormat";
+    public string? PackageId { get; init; }
     public string? TargetFrameworkVersion { get; init; }
     public string? TargetFramework { get; init; }
     public string? TargetFrameworks { get; init; }

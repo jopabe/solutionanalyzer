@@ -1,24 +1,21 @@
 ﻿using Jox.SolutionAnalyzer;
-using System.CommandLine;
+using ConsoleAppFramework;
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.DependencyInjection;
 
-var msBuildPath = new Option<DirectoryInfo>("msBuildPath", "Location of the MSBuild installation");
-var repositoryRoot = new Argument<DirectoryInfo>("repositoryRoot", "The root dir of the repository"); // { Arity = ArgumentArity.OneOrMore };
-
-var rootCommand = new RootCommand("Analyze all .NET solutions in a repo for projects and dependencies")
+var builder = Host.CreateApplicationBuilder(new HostApplicationBuilderSettings()
 {
-    msBuildPath,
-    repositoryRoot
-};
-
-rootCommand.SetHandler(async context =>
-{
-    MSBuildIntegration.RegisterMSBuildLocation(context.ParseResult.GetValueForOption(msBuildPath));
-    var rootDir = context.ParseResult.GetValueForArgument(repositoryRoot);
-    var repo = await Parser.CrawlRepository(rootDir, context.GetCancellationToken());
-    foreach (var sol in repo.Solutions)
-    {
-        Printer.PrintSolution(sol, repo);
-    }
+    Args = args,
+#if DEBUG
+    EnvironmentName = Environments.Development,
+#endif
 });
 
-return rootCommand.Invoke(args);
+var host = builder.Build();
+
+using var scope = host.Services.CreateScope();
+ConsoleApp.ServiceProvider = scope.ServiceProvider;
+
+var app = ConsoleApp.Create();
+app.Add<CliCommands>();
+app.Run(args);
