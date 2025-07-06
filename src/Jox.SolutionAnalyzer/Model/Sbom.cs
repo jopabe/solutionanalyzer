@@ -18,7 +18,7 @@ internal class Sbom() : DbContext("name=Sbom")
     protected override void OnModelCreating(DbModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
-        modelBuilder.Properties<string>().Configure(p => p.HasMaxLength(255));
+        modelBuilder.Properties<string>().Configure(p => p.HasMaxLength(p.ClrPropertyInfo.Name == "ParseIssue" ? 4096 : 255));
         modelBuilder.Conventions.Remove<OneToManyCascadeDeleteConvention>();
     }
 

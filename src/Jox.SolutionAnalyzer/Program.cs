@@ -21,9 +21,17 @@ rootCommand.SetHandler(async context =>
     var insertDb = context.ParseResult.GetValueForOption(insertIntoDatabase) ?? false;
     if (insertDb)
     {
-        var dbcontext = new Sbom();
-        dbcontext.AddRepository(repo);
-        await dbcontext.SaveChangesAsync(context.GetCancellationToken());
+        try
+        {
+            var dbcontext = new Sbom();
+            dbcontext.AddRepository(repo);
+            await dbcontext.SaveChangesAsync(context.GetCancellationToken());
+        }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine($"Error inserting into database: {ex}");
+            throw;
+        }
     }
     else
     {
