@@ -14,7 +14,7 @@ rootCommand.SetHandler(async context =>
 {
     MSBuildIntegration.RegisterMSBuildLocation(context.ParseResult.GetValueForOption(msBuildPath));
     var rootDir = context.ParseResult.GetValueForArgument(repositoryRoot);
-    var repo = await Parser.CrawlRepository(rootDir, context.GetCancellationToken());
+    var repo = await new Parser(rootDir).CrawlRepository(context.GetCancellationToken());
     foreach (var sol in repo.Solutions)
     {
         Printer.PrintSolution(sol, repo);
