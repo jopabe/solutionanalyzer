@@ -21,4 +21,34 @@ internal class Sbom() : DbContext("name=Sbom")
         modelBuilder.Properties<string>().Configure(p => p.HasMaxLength(255));
         modelBuilder.Conventions.Remove<OneToManyCascadeDeleteConvention>();
     }
+
+    public void AddRepository(Repository repository)
+    {
+        Repositories.Add(repository);
+
+        foreach (var sln in repository.Solutions)
+        {
+            Solutions.Add(sln);
+            foreach (var proj in sln.NonMSBuildProjects)
+            {
+                NonMsBuildProjects.Add(proj);
+            }
+        }
+        foreach (var proj in repository.Projects)
+        {
+            MSBuildProjects.Add(proj);
+            foreach (var projectRef in proj.ProjectReferences)
+            {
+                ProjectReferences.Add(projectRef);
+            }
+            foreach (var assemblyRef in proj.AssemblyReferences)
+            {
+                AssemblyReferences.Add(assemblyRef);
+            }
+            foreach (var packageRef in proj.PackageReferences)
+            {
+                PackageReferences.Add(packageRef);
+            }
+        }
+    }
 }

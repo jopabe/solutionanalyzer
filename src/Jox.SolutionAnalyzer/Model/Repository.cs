@@ -9,4 +9,6 @@ public class Repository
     public required string RepositoryId { get; init;  }
     public virtual required IReadOnlyList<Solution> Solutions { get; init; }
     public string? ParseIssue { get; init; }
+
+    public virtual required IReadOnlyList<MSBuildProject> Projects { get; init; }
 }
