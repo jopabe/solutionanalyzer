@@ -41,17 +41,18 @@ public class Parser(DirectoryInfo repositoryRoot)
                 break;
         }
 
+        repository = new()
+        {
+            RepositoryId = repositoryRoot.Name,
+            Solutions = solutions,
+            ParseIssue = issues.Any() ? string.Join(";", issues) : null,
+        };
+        
         foreach (var sln in repositoryRoot.GetFiles("*.sln", SearchOption.AllDirectories))
         {
             solutions.Add(await ParseSolution(sln, cancellationToken));
         }
 
-        repository = new()
-        {
-            RootPath = repositoryRoot,
-            Solutions = solutions,
-            Issues = issues,
-        };
         return repository;
     }
 
@@ -81,17 +82,29 @@ public class Parser(DirectoryInfo repositoryRoot)
                 {
                     otherProjects.Add(new NonMsBuildProject()
                     {
+                        RepositoryId = repository!.RepositoryId,
                         RelativePath = NetFrameworkBackports.GetRelativePath(repositoryRoot.FullName, projectInSolution.AbsolutePath),
                         ProjectName = projectInSolution.ProjectName,
                         ProjectType = projectInSolution.ProjectType.ToString()
                     });
                 }
             }
-            return new() { SolutionFileRelativePath = relativePath, MSBuildProjects = projects, NonMSBuildProjects = otherProjects };
+            return new()
+            {
+                RepositoryId = repository!.RepositoryId,
+                SolutionFileRelativePath = relativePath,
+                MSBuildProjects = projects,
+                NonMSBuildProjects = otherProjects,
+            };
         }
         catch (Exception ex)
         {
-            return new() { SolutionFileRelativePath = relativePath, ParseIssue = ex };
+            return new()
+            {
+                RepositoryId = repository!.RepositoryId,
+                SolutionFileRelativePath = relativePath,
+                ParseIssue = ex.Message,
+            };
         }
     }
 
@@ -106,14 +119,16 @@ public class Parser(DirectoryInfo repositoryRoot)
             {
                 return new MSBuildProject()
                 {
+                    RepositoryId = repository!.RepositoryId,
                     ProjectFileRelativePath = relativePath,
-                    ProjectName = projectInSolution.ProjectName + " (File Not Found)"
+                    ProjectName = projectInSolution.ProjectName + " (File Not Found)",
                 };
             }
             var proj = await Task.Run(() => projectCollection.LoadProject(projectFile.FullName), cancellationToken).ConfigureAwait(false);
             Console.Error.WriteLine("status: processing {0}", projectFile.FullName);
             return new MSBuildProject()
             {
+                RepositoryId = repository!.RepositoryId,
                 ProjectFileRelativePath = relativePath,
                 ProjectName = projectInSolution.ProjectName,
                 TargetFrameworkVersion = proj.GetPropertyValue("TargetFrameworkVersion"),
@@ -122,7 +137,9 @@ public class Parser(DirectoryInfo repositoryRoot)
                 ProjectReferences = proj.GetItemsIgnoringCondition("ProjectReference")
                     .Select(r => new ProjectReference()
                     {
-                        ProjectFile = new FileInfo(Path.Combine(proj.DirectoryPath, r.EvaluatedInclude))
+                        RepositoryId = repository!.RepositoryId,
+                        ProjectFileRelativePath = relativePath,
+                        ReferencedProjectFileRelativePath = NetFrameworkBackports.GetRelativePath(repositoryRoot.FullName, Path.Combine(proj.DirectoryPath, r.EvaluatedInclude))
                     }).ToList(),
                 PackageReferences = proj.GetItemsIgnoringCondition("PackageReference")
                     .Where(r => !r.HasMetadata("IsImplicitlyDefined"))
@@ -138,10 +155,12 @@ public class Parser(DirectoryInfo repositoryRoot)
                         }
                         return new PackageReference()
                         {
+                            RepositoryId = repository!.RepositoryId,
+                            ProjectFileRelativePath = relativePath,
                             PackageName = r.EvaluatedInclude,
                             PackageVersion = version,
                         };
-                    }).Concat(ReadPackagesConfig(proj)).ToList(),
+                    }).Concat(ReadPackagesConfig(proj, relativePath)).ToList(),
                 AssemblyReferences = proj.GetItemsIgnoringCondition("Reference")
                     .Where(r => !r.HasMetadata("IsImplicitlyDefined"))
                     .Select(r =>
@@ -152,25 +171,28 @@ public class Parser(DirectoryInfo repositoryRoot)
                                 Path.Combine(projectFile.Directory!.FullName, hintPath));
                         return new AssemblyReference()
                         {
+                            RepositoryId = repository!.RepositoryId,
+                            ProjectFileRelativePath = relativePath,
                             AssemblyName = r.EvaluatedInclude,
                             HintPath = r.GetMetadataValue("HintPath"),
                             RepositoryRelativePath = relativePath,
                         };
-                    }).ToList()
+                    }).ToList(),
             };
         }
         catch (Exception ex)
         {
             return new MSBuildProject()
             {
+                RepositoryId = repository!.RepositoryId,
                 ProjectFileRelativePath = relativePath,
                 ProjectName = projectInSolution.ProjectName,
-                ParseIssue = ex
+                ParseIssue = ex.Message,
             };
         }
     }
 
-    private static IEnumerable<PackageReference> ReadPackagesConfig(Project proj)
+    private IEnumerable<PackageReference> ReadPackagesConfig(Project proj, string projectFileRelativePath)
     {
         var packagesConfig = new FileInfo(Path.Combine(proj.DirectoryPath, "packages.config"));
         if (!packagesConfig.Exists)
@@ -181,6 +203,8 @@ public class Parser(DirectoryInfo repositoryRoot)
         var reader = new NuGet.Packaging.PackagesConfigReader(stream);
         return reader.GetPackages(true).Select(p => new PackageReference()
         {
+            RepositoryId = repository!.RepositoryId,
+            ProjectFileRelativePath = projectFileRelativePath,
             PackageName = p.PackageIdentity.Id,
             PackageVersion = p.PackageIdentity.Version.ToString(),
             FromPackagesConfig = true
