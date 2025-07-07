@@ -29,7 +29,7 @@ public class Parser(DirectoryInfo repositoryRoot)
                 break;
             case 1:
                 var packagesProps = new Project(packagesPropsLocations[0].FullName, null, null, projectCollection);
-                foreach (var item in packagesProps.Items)
+                foreach (var item in packagesProps.ItemsIgnoringCondition)
                 {
                     if (item.ItemType == "PackageVersion")
                     {
