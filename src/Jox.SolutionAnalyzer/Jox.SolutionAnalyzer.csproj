@@ -11,27 +11,22 @@
 
   <ItemGroup>
     <PackageReference Include="EntityFramework" Version="6.5.1" />
-    <PackageReference Include="Microsoft.Build.Locator" Version="1.9.1" />
-    <PackageReference Include="NuGet.Packaging" Version="6.2.0" />
-    <PackageReference Include="System.CommandLine" Version="2.0.0-beta4.22272.1" />
+    <PackageReference Include="Microsoft.Build.Locator" Version="1.10.12" />
+    <PackageReference Include="Microsoft.CodeAnalysis.Workspaces.MSBuild" Version="5.0.0-2.final" />
+    <PackageReference Include="NuGet.Packaging" Version="7.0.0" />
+    <PackageReference Include="System.CommandLine" Version="2.0.0" />
 
     <PackageReference Include="OpenSoftware.DgmlBuilder" Version="2.1.0" />
     <!-- runtime dependency for Microsoft Build -->
-    <PackageReference Include="System.Configuration.ConfigurationManager" Version="8.0.0" />
-  </ItemGroup>
+    <PackageReference Include="System.Configuration.ConfigurationManager" Version="10.0.0" />
 
-  <ItemGroup Condition=" '$(TargetFramework)' == 'net48'  ">
-    <PackageReference Include="Microsoft.Build" Version="17.12.36" ExcludeAssets="runtime" />
-    <PackageReference Include="System.Text.Json" Version="8.0.5" />
+    <PackageReference Include="Microsoft.Build" Version="18.0.2" ExcludeAssets="runtime" />
+    <PackageReference Include="System.Text.Json" Version="10.0.0" />
     <PackageReference Include="PolySharp" Version="1.15.0">
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers</IncludeAssets>
     </PackageReference>
     <Reference Include="System.ComponentModel.DataAnnotations" />
-  </ItemGroup>
-
-  <ItemGroup Condition=" '$(TargetFramework)' == 'net8.0' ">
-    <PackageReference Include="Microsoft.Build" Version="17.10.29" ExcludeAssets="runtime" />
   </ItemGroup>
 
 </Project>

@@ -6,11 +6,11 @@ namespace Jox.SolutionAnalyzer;
 
 public class Parser(DirectoryInfo repositoryRoot)
 {
-    private ProjectCollection projectCollection = new();
-    private Dictionary<string, string> packageVersionLookup = new(StringComparer.OrdinalIgnoreCase);
-    private Dictionary<string, MSBuildProject> projectCache = new(StringComparer.OrdinalIgnoreCase);
+    private readonly ProjectCollection projectCollection = new();
+    private readonly Dictionary<string, string> packageVersionLookup = new(StringComparer.OrdinalIgnoreCase);
+    private readonly Dictionary<string, MSBuildProject> projectCache = new(StringComparer.OrdinalIgnoreCase);
     private Repository? repository;
-    private List<string> issues = new();
+    private readonly List<string> issues = [];
 
     public async Task<Repository> CrawlRepository(CancellationToken cancellationToken)
     {
@@ -62,7 +62,7 @@ public class Parser(DirectoryInfo repositoryRoot)
     public async Task<Solution> ParseSolution(FileInfo slnFile, CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        var relativePath = NetFrameworkBackports.GetRelativePath(repositoryRoot.FullName, slnFile.FullName);
+        var relativePath = Path.GetRelativePath(repositoryRoot.FullName, slnFile.FullName);
         try
         {
             var msBuildSolution = await Task.Run(() => SolutionFile.Parse(slnFile.FullName), cancellationToken).ConfigureAwait(false);
@@ -73,8 +73,7 @@ public class Parser(DirectoryInfo repositoryRoot)
             {
                 if (projectInSolution.ProjectType == SolutionProjectType.KnownToBeMSBuildFormat)
                 {
-                    MSBuildProject? project = null;
-                    if (!projectCache.TryGetValue(projectInSolution.AbsolutePath, out project))
+                    if (!projectCache.TryGetValue(projectInSolution.AbsolutePath, out var project))
                     {
                         project = await ParseProject(projectInSolution, cancellationToken).ConfigureAwait(false);
                         projectCache.Add(projectInSolution.AbsolutePath, project);
@@ -86,7 +85,7 @@ public class Parser(DirectoryInfo repositoryRoot)
                     otherProjects.Add(new NonMsBuildProject()
                     {
                         RepositoryId = repository!.RepositoryId,
-                        RelativePath = NetFrameworkBackports.GetRelativePath(repositoryRoot.FullName, projectInSolution.AbsolutePath),
+                        RelativePath = Path.GetRelativePath(repositoryRoot.FullName, projectInSolution.AbsolutePath),
                         ProjectName = projectInSolution.ProjectName,
                         ProjectType = projectInSolution.ProjectType.ToString()
                     });
@@ -115,7 +114,7 @@ public class Parser(DirectoryInfo repositoryRoot)
     {
         cancellationToken.ThrowIfCancellationRequested();
         var projectFile = new FileInfo(projectInSolution.AbsolutePath);
-        var projectFileRelativePath = NetFrameworkBackports.GetRelativePath(repositoryRoot.FullName, projectFile.FullName);
+        var projectFileRelativePath = Path.GetRelativePath(repositoryRoot.FullName, projectFile.FullName);
         try
         {
             if (!projectFile.Exists)
@@ -181,21 +180,21 @@ public class Parser(DirectoryInfo repositoryRoot)
                 TargetFrameworkVersion = proj.GetPropertyValue("TargetFrameworkVersion"),
                 TargetFramework = proj.GetPropertyValue("TargetFramework"),
                 TargetFrameworks = proj.GetPropertyValue("TargetFrameworks"),
-                ProjectReferences = proj.GetItemsIgnoringCondition("ProjectReference")
+                ProjectReferences = [.. proj.GetItemsIgnoringCondition("ProjectReference")
                     .Select(r => new ProjectReference()
                     {
                         RepositoryId = repository!.RepositoryId,
                         ProjectFileRelativePath = projectFileRelativePath,
-                        ReferencedProjectFileRelativePath = NetFrameworkBackports.GetRelativePath(repositoryRoot.FullName, Path.Combine(proj.DirectoryPath, r.EvaluatedInclude))
-                    }).ToList(),
+                        ReferencedProjectFileRelativePath = Path.GetRelativePath(repositoryRoot.FullName, Path.Combine(proj.DirectoryPath, r.EvaluatedInclude))
+                    })],
                 PackageReferences = packageReferences,
-                AssemblyReferences = proj.GetItemsIgnoringCondition("Reference")
+                AssemblyReferences = [.. proj.GetItemsIgnoringCondition("Reference")
                     .Where(r => !r.HasMetadata("IsImplicitlyDefined"))
                     .Select(r =>
                     {
                         var hintPath = r.GetMetadataValue("HintPath");
                         var relativePath = string.IsNullOrWhiteSpace(hintPath) ? "" :
-                            NetFrameworkBackports.GetRelativePath(repositoryRoot.FullName,
+                            Path.GetRelativePath(repositoryRoot.FullName,
                                 Path.Combine(projectFile.Directory!.FullName, hintPath));
                         return new AssemblyReference()
                         {
@@ -205,7 +204,7 @@ public class Parser(DirectoryInfo repositoryRoot)
                             HintPath = r.GetMetadataValue("HintPath"),
                             RepositoryRelativePath = relativePath,
                         };
-                    }).ToList(),
+                    })],
                 ParseIssue = parseIssue,
             };
         }

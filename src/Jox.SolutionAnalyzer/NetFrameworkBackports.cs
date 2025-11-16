@@ -1,23 +1,20 @@
-﻿using System.Runtime.InteropServices;
-using System.Text;
+﻿namespace Jox.SolutionAnalyzer;
 
-namespace Jox.SolutionAnalyzer;
-
+#if NETFRAMEWORK
 internal static class NetFrameworkBackports
 {
-#if NETFRAMEWORK
+    extension(Path)
+    {
     public static string GetRelativePath(string fromPath, string toPath)
     {
         if (fromPath.Last() != Path.DirectorySeparatorChar)
         {
-            fromPath = fromPath + Path.DirectorySeparatorChar;
+            fromPath += Path.DirectorySeparatorChar;
         }
         var uri = new Uri(fromPath);
         var rel = Uri.UnescapeDataString(uri.MakeRelativeUri(new Uri(toPath)).ToString());
         return rel.Replace(Path.AltDirectorySeparatorChar, Path.DirectorySeparatorChar);
     }
-#else
-    public static string GetRelativePath(string fromPath, string toPath) => Path.GetRelativePath(fromPath, toPath);
-
-#endif
 }
+}
+#endif
