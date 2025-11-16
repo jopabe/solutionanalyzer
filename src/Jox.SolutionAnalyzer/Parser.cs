@@ -177,6 +177,7 @@ public class Parser(DirectoryInfo repositoryRoot)
                 RepositoryId = repository!.RepositoryId,
                 ProjectFileRelativePath = projectFileRelativePath,
                 ProjectName = projectInSolution.ProjectName,
+                PackageId = DeterminePackageId(proj),
                 TargetFrameworkVersion = proj.GetPropertyValue("TargetFrameworkVersion"),
                 TargetFramework = proj.GetPropertyValue("TargetFramework"),
                 TargetFrameworks = proj.GetPropertyValue("TargetFrameworks"),
@@ -218,5 +219,19 @@ public class Parser(DirectoryInfo repositoryRoot)
                 ParseIssue = ex.Message,
             };
         }
+    }
+
+    public string DeterminePackageId(Project project)
+    {
+        var packageId = project.GetPropertyValue("PackageId");
+        if (string.IsNullOrEmpty(packageId))
+        {
+            packageId = project.GetPropertyValue("AssemblyName");
+        }
+        if (string.IsNullOrEmpty(packageId))
+        {
+            packageId = Path.GetFileNameWithoutExtension(project.FullPath);
+        }
+        return packageId;
     }
 }

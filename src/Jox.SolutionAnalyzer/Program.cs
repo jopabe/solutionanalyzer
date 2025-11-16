@@ -5,12 +5,14 @@ using System.CommandLine;
 var msBuildPath = new Option<DirectoryInfo>("--msBuildPath") { Description = "Location of the MSBuild installation" };
 var repositoryRoot = new Argument<DirectoryInfo>("repositoryRoot") { Description = "The root dir of the repository" }; // { Arity = ArgumentArity.OneOrMore };
 var insertIntoDatabase = new Option<bool?>("--insert") { Description = "Insert the result into the database", Arity = ArgumentArity.Zero };
+var useDgml = new Option<bool?>("--dgml") { Description = "Use DGML format for the output", Arity = ArgumentArity.Zero };
 
 var rootCommand = new RootCommand("Analyze all .NET solutions in a repo for projects and dependencies")
 {
     msBuildPath,
     repositoryRoot,
     insertIntoDatabase,
+    useDgml,
 };
 
 var truncateDatabase = new Command("truncate") { Description = "Truncate the database" };
@@ -56,6 +58,16 @@ rootCommand.SetAction(async (parseResult, cancellationToken) =>
             Console.Error.WriteLine($"Error inserting into database: {ex}");
             throw;
         }
+    }
+    else if (parseResult.GetValue(useDgml) ?? false)
+    {
+        var sbom = new Sbom();
+        sbom.AddRepository(repo);
+        var builder = new GraphBuilder(sbom);
+        var graph = builder.GetDgml();
+
+        // stdout
+        graph.SerializeTo(Console.Out);
     }
     else
     {
