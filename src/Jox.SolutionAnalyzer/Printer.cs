@@ -8,7 +8,7 @@ internal class Printer
     {
         if (sln.ParseIssue != null)
         {
-            WriteCsvLine("sln-corrupt", sln.SolutionFileRelativePath, sln.ParseIssue.Message);
+            WriteCsvLine("sln-corrupt", sln.SolutionFileRelativePath, sln.ParseIssue);
         }
         foreach (var proj in sln.NonMSBuildProjects)
         {
@@ -27,7 +27,7 @@ internal class Printer
         if (proj.ParseIssue != null)
         {
             WriteCsvLine("sln-proj-corrupt", slnPath, proj.ProjectFileRelativePath,
-                proj.ProjectType, proj.ProjectName, proj.ParseIssue.Message, string.Empty, string.Empty);
+                proj.ProjectType, proj.ProjectName, proj.ParseIssue, string.Empty, string.Empty);
         }
         else
         {
@@ -37,7 +37,7 @@ internal class Printer
         }
         foreach (var projectRef in proj.ProjectReferences)
         {
-            WriteCsvLine("proj-projdep", proj.ProjectFileRelativePath, projectRef.ProjectFile.FullName);
+            WriteCsvLine("proj-projdep", proj.ProjectFileRelativePath, projectRef.ReferencedProjectFileRelativePath);
         }
         foreach (var assemblyRef in proj.AssemblyReferences)
         {

@@ -8,6 +8,10 @@ internal static class NetFrameworkBackports
 #if NETFRAMEWORK
     public static string GetRelativePath(string fromPath, string toPath)
     {
+        if (fromPath.Last() != Path.DirectorySeparatorChar)
+        {
+            fromPath = fromPath + Path.DirectorySeparatorChar;
+        }
         var uri = new Uri(fromPath);
         var rel = Uri.UnescapeDataString(uri.MakeRelativeUri(new Uri(toPath)).ToString());
         return rel.Replace(Path.AltDirectorySeparatorChar, Path.DirectorySeparatorChar);
