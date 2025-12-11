@@ -13,6 +13,30 @@ var rootCommand = new RootCommand("Analyze all .NET solutions in a repo for proj
     insertIntoDatabase,
 };
 
+var truncateDatabase = new Command("truncate") { Description = "Truncate the database" };
+rootCommand.Subcommands.Add(truncateDatabase);
+
+truncateDatabase.SetAction(async(parseResult, cancellationToken) =>
+{
+    try
+    {
+        var dbcontext = new Sbom();
+        dbcontext.Database.ExecuteSqlCommand("DELETE FROM PackageReferences");
+        dbcontext.Database.ExecuteSqlCommand("DELETE FROM AssemblyReferences");
+        dbcontext.Database.ExecuteSqlCommand("DELETE FROM ProjectReferences");
+        dbcontext.Database.ExecuteSqlCommand("DELETE FROM MSBuildProjects");
+        dbcontext.Database.ExecuteSqlCommand("DELETE FROM NonMsBuildProjects");
+        dbcontext.Database.ExecuteSqlCommand("DELETE FROM Solutions");
+        dbcontext.Database.ExecuteSqlCommand("DELETE FROM Repositories");
+        await dbcontext.SaveChangesAsync(cancellationToken);
+    }
+    catch (Exception ex)
+    {
+        Console.Error.WriteLine($"Error truncating database: {ex}");
+        throw;
+    }
+});
+
 rootCommand.SetAction(async (parseResult, cancellationToken) =>
 {
     MSBuildIntegration.RegisterMSBuildLocation(parseResult.GetValue(msBuildPath));
