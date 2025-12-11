@@ -80,14 +80,14 @@ public class Parser(DirectoryInfo repositoryRoot)
                     }
                     projects.Add(project);
                 }
-                else
+                else if (projectInSolution.ProjectType != SolutionProjectType.SolutionFolder)
                 {
                     otherProjects.Add(new NonMsBuildProject()
                     {
                         RepositoryId = repository!.RepositoryId,
                         RelativePath = Path.GetRelativePath(repositoryRoot.FullName, projectInSolution.AbsolutePath),
                         ProjectName = projectInSolution.ProjectName,
-                        ProjectType = projectInSolution.ProjectType.ToString()
+                        ProjectType = projectInSolution.ProjectType == SolutionProjectType.Unknown ? Path.GetExtension(projectInSolution.AbsolutePath) : projectInSolution.ProjectType.ToString(),
                     });
                 }
             }
